@@ -1,9 +1,11 @@
 package main
 
 import (
-	"ParityFS/common"
-	"ParityFS/server"
+	client "ParityFS/Client"
+	common "ParityFS/Common"
+	server "ParityFS/Server"
 	"os"
+	"time"
 )
 
 func main() {
@@ -40,10 +42,38 @@ func main() {
 			}
 			println("New certificate and key generated: server.crt and server.key")
 			return
-		}
 
+		case "--dev":
+			println("Running in development mode")
+			common.IsDevelopmentMode = true
+
+			defer func() {
+
+				// If the program panics, print the error
+				if r := recover(); r != nil {
+					println("Error:", r.(string))
+				}
+
+				println("Somthing went wrong, dumping logs...")
+
+				if len(common.BufferedLogs) > 0 {
+					for _, log := range common.BufferedLogs {
+						println(log)
+					}
+					common.BufferedLogs = make([]string, 0, 100) // clear the buffer
+				}
+
+			}()
+
+			go server.ServerMain()
+			time.Sleep(100 * time.Millisecond) // Give server time to start
+			go client.ClientMain()
+			common.HandelLogging()
+			return
+
+		}
 	}
 
-	println("Assuming Client Mode...")
+	client.ClientMain()
 
 }

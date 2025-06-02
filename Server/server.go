@@ -1,12 +1,16 @@
 package server
 
 import (
-	"ParityFS/common"
+	common "ParityFS/Common"
 	"crypto/tls"
 	"net"
 	"os"
 	"strconv"
 )
+
+func Log(args ...any) {
+	common.RemoteLog("\033[92mServer >\033[0m ", args...)
+}
 
 // should be paths to certificate files
 type ICertificate struct {
@@ -21,8 +25,8 @@ type IServer struct {
 	// certificate for TLS
 	certificate ICertificate
 
-	serverVersion int
-	tlslistener   *net.Listener
+	Version     int
+	tlslistener *net.Listener
 }
 
 var (
@@ -36,13 +40,13 @@ var (
 			key: "./server.key",
 		},
 
-		serverVersion: common.ProtocallVersion,
+		Version: common.ProtocallVersion,
 	}
 )
 
 func ServerMain() {
 
-	println("ParityFS In Server Mode")
+	Log("ParityFS In Server Mode")
 
 	// read the cmd line arguments for server options
 	args := os.Args[1:]
@@ -51,78 +55,86 @@ func ServerMain() {
 
 		switch args[i] {
 
+		case "--dev":
+			fallthrough
 		case "--server":
 			break
 
 		case "-p":
+			fallthrough
 		case "--port":
 			i++
 			if i < len(args) {
 				err := error(nil)
 				Server.port, err = strconv.Atoi(args[i])
 				if err != nil {
-					println("Invalid port number:", args[i])
+					Log("Invalid port number:", args[i])
 					return
 				}
 			} else {
-				println("No port specified, using default port 51888")
+				Log("No port specified, using default port 51888")
 			}
 
+		case "-h":
+			fallthrough
 		case "--host":
 			i++
 			if i < len(args) {
 				Server.host = args[i]
 			} else {
-				println("No host specified, using default host localhost")
+				Log("No host specified, using default host localhost")
 			}
 
 		case "--certificate":
+			fallthrough
 		case "--cert":
+			fallthrough
 		case "-c":
 			i++
 			if i < len(args) {
 				Server.certificate.crt = args[i]
 			} else {
-				println("No certificate file specified, using default empty certificate")
+				Log("No certificate file specified, using default empty certificate")
 			}
 		case "--key":
+			fallthrough
 		case "-k":
 			i++
 			if i < len(args) {
 				Server.certificate.key = args[i]
 			} else {
-				println("No key file specified, using default empty key")
+				Log("No key file specified, using default empty key")
 			}
 
 		default:
-			println("Unknown argument:", args[i])
+			Log("Unknown argument:", args[i])
 		}
 
 	}
 
-	println("Server Configuration:")
-	println("  Port:", Server.port)
-	println("  Host:", Server.host)
-	println("  Certificate:", Server.certificate.crt)
-	println("  Key:", Server.certificate.key)
-	println("  Server Version:", Server.serverVersion)
+	Log("Server Configuration:")
+	Log("  Port:", Server.port)
+	Log("  Host:", Server.host)
+	Log("  Certificate:", Server.certificate.crt)
+	Log("  Key:", Server.certificate.key)
+	Log("  Server Version:", Server.Version)
 
 	// check if certificate files exist
 	if _, err := os.Stat(Server.certificate.crt); os.IsNotExist(err) {
-		println("Certificate file does not exist:", Server.certificate.crt)
-		println("Please generate a certificate using --certgen or provide a valid certificate file.")
+		Log("Certificate file does not exist:", Server.certificate.crt)
+		Log("Please generate a certificate using --certgen or provide a valid certificate file.")
 		return
 	}
 	if _, err := os.Stat(Server.certificate.key); os.IsNotExist(err) {
-		println("Key file does not exist:", Server.certificate.key)
-		println("Please generate a certificate using --certgen or provide a valid key file.")
+		Log("Key file does not exist:", Server.certificate.key)
+		Log("Please generate a certificate using --certgen or provide a valid key file.")
 		return
 	}
 
 	// create a TLS instance
 	cert, err := tls.LoadX509KeyPair(Server.certificate.crt, Server.certificate.key)
 	if err != nil {
-		println("Error loading certificate and key:", err.Error())
+		Log("Error loading certificate and key:", err.Error())
 		return
 	}
 
@@ -132,11 +144,41 @@ func ServerMain() {
 
 	listener, err := tls.Listen("tcp", Server.host+":"+strconv.Itoa(Server.port), config)
 	if err != nil {
-		println("Error starting server:", err.Error())
+		Log("Error starting server:", err.Error())
 		return
 	}
 
-	println("Server is listening on", Server.host+":"+strconv.Itoa(Server.port))
+	Log("Server is listening on", Server.host+":"+strconv.Itoa(Server.port))
 	Server.tlslistener = &listener
+
+	for {
+		conn, err := (*Server.tlslistener).Accept()
+		if err != nil {
+			Log("Error accepting connection:", err.Error())
+			continue
+		}
+
+		Log("New connection from ", conn.RemoteAddr().String())
+
+		go func() {
+			for {
+				// read and print data from the connection
+				buffer := make([]byte, 1024)
+				n, err := conn.Read(buffer)
+				if err != nil {
+					Log("Error reading from connection:", err.Error())
+					conn.Close()
+					return
+				}
+				if n == 0 {
+					Log("Connection closed by client:", conn.RemoteAddr().String())
+					conn.Close()
+					return
+				}
+				data := string(buffer[:n])
+				Log("Received data from", conn.RemoteAddr().String(), ": ", data)
+			}
+		}()
+	}
 
 }
