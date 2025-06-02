@@ -27,6 +27,8 @@ type IServer struct {
 
 	Version     int
 	tlslistener *net.Listener
+
+	connectedClients map[string]*RemoteClient
 }
 
 var (
@@ -40,7 +42,9 @@ var (
 			key: "./server.key",
 		},
 
-		Version: common.ProtocallVersion,
+		Version:          common.ProtocallVersion,
+		tlslistener:      nil,
+		connectedClients: make(map[string]*RemoteClient),
 	}
 )
 
@@ -148,7 +152,7 @@ func ServerMain() {
 		return
 	}
 
-	Log("Server is listening on", Server.host+":"+strconv.Itoa(Server.port))
+	Log("Server is listening on ", Server.host+":"+strconv.Itoa(Server.port))
 	Server.tlslistener = &listener
 
 	for {
@@ -158,27 +162,7 @@ func ServerMain() {
 			continue
 		}
 
-		Log("New connection from ", conn.RemoteAddr().String())
-
-		go func() {
-			for {
-				// read and print data from the connection
-				buffer := make([]byte, 1024)
-				n, err := conn.Read(buffer)
-				if err != nil {
-					Log("Error reading from connection:", err.Error())
-					conn.Close()
-					return
-				}
-				if n == 0 {
-					Log("Connection closed by client:", conn.RemoteAddr().String())
-					conn.Close()
-					return
-				}
-				data := string(buffer[:n])
-				Log("Received data from", conn.RemoteAddr().String(), ": ", data)
-			}
-		}()
+		address := conn.RemoteAddr().String()
+		HandleNewClient(conn, address, Server)
 	}
-
 }
