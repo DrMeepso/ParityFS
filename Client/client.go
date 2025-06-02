@@ -39,6 +39,8 @@ var Client IClient = IClient{
 	},
 }
 
+var ServerConn *tls.Conn
+
 func ClientMain() {
 	Log("ParityFS In Client Mode")
 
@@ -123,9 +125,13 @@ func ClientMain() {
 		return
 	}
 
-	defer conn.Close()
-	Log("Connected to server:", Client.ServerInfo.Host, " on port ", Client.ServerInfo.Port)
+	ServerConn = conn
 
-	conn.Write([]byte("Hello from ParityFS Client!\n"))
+	defer conn.Close()
+	Log("Connected to server: ", Client.ServerInfo.Host, " on port ", Client.ServerInfo.Port)
+
+	// should be a goroutine
+	// but i havent added the FUSEFS yet, so I just use a blocking call
+	BeginReading()
 
 }

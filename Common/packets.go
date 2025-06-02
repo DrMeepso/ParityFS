@@ -16,14 +16,7 @@ func AddPacketType(Command string, Type any) {
 	PacketToCommand[reflect.TypeOf(Type)] = Command
 }
 
-func RegisterPackets() {
-	// Register all packet types here
-	AddPacketType("JoinAknowledgment", JoinAknowledgment{})
-	AddPacketType("LoginRequest", LoginRequest{})
-	AddPacketType("LoginResponse", LoginResponse{})
-}
-
-func SendPacket(socket net.Conn, data any) {
+func SendPacket(socket net.Conn, data any) error {
 
 	//get the type of the data
 	dataType := reflect.TypeOf(data)
@@ -39,11 +32,18 @@ func SendPacket(socket net.Conn, data any) {
 		// send the packet as JSON
 		if err := SendJSON(socket, packet); err != nil {
 			RemoteLog("\033[91mCommon >\033[0m", "Error sending packet:", err)
+			return err
 		}
 	} else {
 		RemoteLog("\033[91mCommon >\033[0m", "Error: Packet type not registered:", dataType)
+		return &net.OpError{
+			Op:  "send",
+			Net: "tcp",
+			Err: &json.UnsupportedTypeError{Type: dataType},
+		}
 	}
 
+	return nil
 }
 
 func SendJSON(socket net.Conn, data any) error {
@@ -60,6 +60,53 @@ func SendJSON(socket net.Conn, data any) error {
 	}
 
 	return nil
+
+}
+
+func ReadPacket(b []byte) (Packet, error) {
+	var packet Packet
+
+	// Unmarshal the JSON data into the Packet struct
+	err := json.Unmarshal(b, &packet)
+	if err != nil {
+		RemoteLog("\033[91mCommon >\033[0m", "Error unmarshalling JSON:", err)
+		return packet, err
+	}
+
+	// Check if the command is registered
+	if _, ok := CommandToPacket[packet.Command]; !ok {
+		RemoteLog("\033[91mCommon >\033[0m", "Error: Command not registered:", packet.Command)
+		return packet, &json.UnmarshalTypeError{Value: packet.Command}
+	}
+
+	data, err := json.Marshal(packet.Data)
+	if err != nil {
+		RemoteLog("\033[91mCommon >\033[0m", "Error marshalling packet data:", err)
+		return packet, err
+	}
+
+	// Unmarshal the data into the appropriate type
+	packetType := CommandToPacket[packet.Command]
+	packetValue := reflect.New(packetType).Interface()
+	err = json.Unmarshal(data, packetValue)
+	if err != nil {
+		RemoteLog("\033[91mCommon >\033[0m", "Error unmarshalling packet data:", err)
+		return packet, err
+	}
+
+	packet.Data = packetValue
+
+	return packet, nil
+}
+
+func RegisterPackets() {
+	PacketToCommand = make(map[reflect.Type]string)
+	CommandToPacket = make(map[string]reflect.Type)
+
+	// Register all packet types here
+	AddPacketType("JoinAknowledgment", JoinAknowledgment{})
+	AddPacketType("LoginRequest", LoginRequest{})
+	AddPacketType("LoginResponse", LoginResponse{})
 
 }
 

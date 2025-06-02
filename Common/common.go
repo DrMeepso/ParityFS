@@ -21,7 +21,7 @@ var (
 func RemoteLog(from string, args ...any) {
 	// lock the log buffer
 	LogLock.Lock()
-	BufferedLogs = append(BufferedLogs, from+": "+fmt.Sprint(args...))
+	BufferedLogs = append(BufferedLogs, from+fmt.Sprint(args...))
 	// unlock the log buffer
 	LogLock.Unlock()
 }

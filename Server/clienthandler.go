@@ -11,6 +11,13 @@ type RemoteClient struct {
 	Username string
 }
 
+func (Client *RemoteClient) SendPacket(data any) {
+	// Send a packet to the client
+	if err := common.SendPacket(Client.Conn, data); err != nil {
+		common.RemoteLog("\033[91mServer >\033[0m", "Error sending packet to client:", err)
+	}
+}
+
 func HandleNewClient(conn net.Conn, address string, Server IServer) *RemoteClient {
 	client := &RemoteClient{
 		Conn:     conn,
@@ -33,9 +40,8 @@ func ClientLoop(client *RemoteClient, Server IServer) {
 	aknowledgment := common.JoinAknowledgment{
 		ServerProtocolVersion: Server.Version,
 	}
-	if err := common.SendJSON(client.Conn, aknowledgment); err != nil {
+	if err := common.SendPacket(client.Conn, aknowledgment); err != nil {
 		Log("Error sending acknowledgment to client:", err)
-		client.Conn.Close()
 		return
 	}
 

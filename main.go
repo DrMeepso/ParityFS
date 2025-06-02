@@ -10,6 +10,8 @@ import (
 
 func main() {
 
+	common.RegisterPackets() // Register all packet types
+
 	// get command line arguments
 	args := os.Args[1:]
 
