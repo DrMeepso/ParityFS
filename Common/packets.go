@@ -31,11 +31,11 @@ func SendPacket(socket net.Conn, data any) error {
 
 		// send the packet as JSON
 		if err := SendJSON(socket, packet); err != nil {
-			RemoteLog("\033[91mCommon >\033[0m", "Error sending packet:", err)
+			log("Error sending packet:", err)
 			return err
 		}
 	} else {
-		RemoteLog("\033[91mCommon >\033[0m", "Error: Packet type not registered:", dataType)
+		log("Error: Packet type not registered:", dataType)
 		return &net.OpError{
 			Op:  "send",
 			Net: "tcp",
@@ -50,12 +50,12 @@ func SendJSON(socket net.Conn, data any) error {
 
 	jsonData, err := json.Marshal(data)
 	if err != nil {
-		RemoteLog("\033[91mCommon >\033[0m", "Error marshalling JSON:", err)
+		log("Error marshalling JSON:", err)
 	}
 
 	_, err = socket.Write(jsonData)
 	if err != nil {
-		RemoteLog("\033[91mCommon >\033[0m", "Error writing to socket:", err)
+		log("Error writing to socket:", err)
 		return err
 	}
 
@@ -69,19 +69,19 @@ func ReadPacket(b []byte) (Packet, error) {
 	// Unmarshal the JSON data into the Packet struct
 	err := json.Unmarshal(b, &packet)
 	if err != nil {
-		RemoteLog("\033[91mCommon >\033[0m", "Error unmarshalling JSON:", err)
+		log("Error unmarshalling JSON:", err)
 		return packet, err
 	}
 
 	// Check if the command is registered
 	if _, ok := CommandToPacket[packet.Command]; !ok {
-		RemoteLog("\033[91mCommon >\033[0m", "Error: Command not registered:", packet.Command)
+		log("Error: Command not registered:", packet.Command)
 		return packet, &json.UnmarshalTypeError{Value: packet.Command}
 	}
 
 	data, err := json.Marshal(packet.Data)
 	if err != nil {
-		RemoteLog("\033[91mCommon >\033[0m", "Error marshalling packet data:", err)
+		log("Error marshalling packet data:", err)
 		return packet, err
 	}
 
@@ -90,7 +90,7 @@ func ReadPacket(b []byte) (Packet, error) {
 	packetValue := reflect.New(packetType).Interface()
 	err = json.Unmarshal(data, packetValue)
 	if err != nil {
-		RemoteLog("\033[91mCommon >\033[0m", "Error unmarshalling packet data:", err)
+		log("Error unmarshalling packet data:", err)
 		return packet, err
 	}
 

@@ -3,6 +3,7 @@ package server
 import (
 	common "ParityFS/Common"
 	"net"
+	"reflect"
 )
 
 type RemoteClient struct {
@@ -64,7 +65,23 @@ func ClientLoop(client *RemoteClient, Server IServer) {
 		}
 
 		if n > 0 {
+			Packet, err := common.ReadPacket(buffer[:n])
+			if err != nil {
+				Log("Error reading packet from client:", err)
+				continue
+			}
 
+			switch data := Packet.Data.(type) {
+			case *common.LoginRequest:
+				{
+					Log("Received LoginRequest from client:", data.Username)
+					client.Username = data.Username
+					client.SendPacket(common.LoginResponse{Success: true, Message: "Login successful"})
+				}
+			default:
+				Log("Received unknown packet command from client:", Packet.Command)
+				Log("Packet data type:", reflect.TypeOf(Packet.Data))
+			}
 		}
 
 	}

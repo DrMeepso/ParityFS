@@ -26,6 +26,10 @@ func RemoteLog(from string, args ...any) {
 	LogLock.Unlock()
 }
 
+func log(args ...any) {
+	RemoteLog("\033[91mCommon >\033[0m ", args...)
+}
+
 func HandelLogging() {
 	for {
 		LogLock.Lock()

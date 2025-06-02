@@ -33,6 +33,22 @@ func BeginReading() {
 			{
 				Log("Received JoinAknowledgment from server")
 				Log("Server Protocol Version:", data.ServerProtocolVersion)
+				if data.ServerProtocolVersion != common.ProtocallVersion {
+					Log("Protocol version mismatch! Client version:", common.ProtocallVersion, "Server version:", data.ServerProtocolVersion)
+					Log("Please update your client or server to match the protocol version.")
+					return
+				}
+
+				loginAttempt := common.LoginRequest{
+					Username: Client.Credential.Username,
+					Password: Client.Credential.Password,
+				}
+
+				if err := common.SendPacket(ServerConn, loginAttempt); err != nil {
+					Log("Error sending login request:", err)
+					return
+				}
+
 			}
 
 		default:
