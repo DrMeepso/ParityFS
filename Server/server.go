@@ -27,6 +27,8 @@ type IServer struct {
 	// certificate for TLS
 	certificate ICertificate
 
+	RootPath string // root path for the server, used for file storage
+
 	Version     int
 	tlslistener *net.Listener
 
@@ -45,6 +47,8 @@ var (
 			crt: "./server.crt",
 			key: "./server.key",
 		},
+
+		RootPath: "./files", // default root path for server data
 
 		Version:          common.ProtocallVersion,
 		tlslistener:      nil,
@@ -116,6 +120,16 @@ func ServerMain() {
 				Server.certificate.key = args[i]
 			} else {
 				Log("No key file specified, using default empty key")
+			}
+
+		case "--path":
+			fallthrough
+		case "-P":
+			i++
+			if i < len(args) {
+				Server.RootPath = args[i]
+			} else {
+				Log("No root path specified, using default path ./files")
 			}
 
 		default:

@@ -28,6 +28,7 @@ type IClient struct {
 	Credential       ICredential
 	IsLoggedIn       bool
 	allowInvalidCert bool // for testing purposes, should be false in production
+	FuseFS           *fuseFS
 }
 
 var Client IClient = IClient{
@@ -150,8 +151,7 @@ func ClientMain() {
 	defer conn.Close()
 	Log("Connected to server: ", Client.ServerInfo.Host, ":", Client.ServerInfo.Port)
 
-	// should be a goroutine
-	// but i havent added the FUSEFS yet, so I just use a blocking call
+	go Client.Mount() // mounts the FUSE filesystem
 	BeginReading()
 
 }

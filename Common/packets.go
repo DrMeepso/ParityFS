@@ -11,7 +11,8 @@ var (
 	PacketToCommand map[reflect.Type]string = map[reflect.Type]string{}
 )
 
-func AddPacketType(Command string, Type any) {
+func addPacketType(Type any) {
+	Command := reflect.TypeOf(Type).Name()
 	CommandToPacket[Command] = reflect.TypeOf(Type)
 	PacketToCommand[reflect.TypeOf(Type)] = Command
 }
@@ -30,7 +31,7 @@ func SendPacket(socket net.Conn, data any) error {
 		}
 
 		// send the packet as JSON
-		if err := SendJSON(socket, packet); err != nil {
+		if err := sendJSON(socket, packet); err != nil {
 			log("Error sending packet:", err)
 			return err
 		}
@@ -46,7 +47,7 @@ func SendPacket(socket net.Conn, data any) error {
 	return nil
 }
 
-func SendJSON(socket net.Conn, data any) error {
+func sendJSON(socket net.Conn, data any) error {
 
 	jsonData, err := json.Marshal(data)
 	if err != nil {
@@ -104,9 +105,11 @@ func RegisterPackets() {
 	CommandToPacket = make(map[string]reflect.Type)
 
 	// Register all packet types here
-	AddPacketType("JoinAknowledgment", JoinAknowledgment{})
-	AddPacketType("LoginRequest", LoginRequest{})
-	AddPacketType("LoginResponse", LoginResponse{})
+	addPacketType(JoinAknowledgment{})
+	addPacketType(LoginRequest{})
+	addPacketType(LoginResponse{})
+	addPacketType(GetDirectoryRequest{})
+	addPacketType(GetDirectoryResponse{})
 
 }
 
@@ -139,4 +142,26 @@ type LoginRequest struct {
 type LoginResponse struct {
 	Success bool   `json:"success"`
 	Message string `json:"message,omitempty"`
+}
+
+// Client > Server
+// Request to get a directory listing
+type GetDirectoryRequest struct {
+	Path  string `json:"path"`
+	ReqID int    `json:"reqid"`
+}
+
+// Server > Client
+// Response to a directory listing request
+type GetDirectoryResponse struct {
+	Files []IRemoteFileInfo `json:"files"`
+	ReqID int               `json:"reqid"`
+}
+
+type IRemoteFileInfo struct {
+	Path     string `json:"path"`
+	Name     string `json:"name"`
+	Size     int64  `json:"size"`
+	Modified int64  `json:"modified"`
+	IsDir    bool   `json:"is_dir"`
 }
