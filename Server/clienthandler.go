@@ -41,7 +41,7 @@ func ClientLoop(client *RemoteClient, Server IServer) {
 	// This is a placeholder for the actual implementation
 	// You would typically read from client.Conn and respond accordingly
 	// For now, we just log the new client connection
-	Log("New client connected:", client.Address)
+	Log("New client connected: ", client.Address)
 
 	aknowledgment := common.JoinAknowledgment{
 		ServerProtocolVersion: Server.Version,
@@ -54,7 +54,7 @@ func ClientLoop(client *RemoteClient, Server IServer) {
 	defer func() {
 		client.Conn.Close()
 		Server.removeConnectedClient(client)
-		Log("Client disconnected:", client.Address)
+		Log("Client disconnected: ", client.Address)
 	}()
 
 	for {
@@ -65,28 +65,29 @@ func ClientLoop(client *RemoteClient, Server IServer) {
 		buffer := make([]byte, 1024)
 		n, err := client.Conn.Read(buffer)
 		if err != nil {
-			Log("Error reading from client:", err)
+			Log("Error reading from client: ", err)
 			return
 		}
 
 		if n > 0 {
 			Packet, err := common.ReadPacket(buffer[:n])
 			if err != nil {
-				Log("Error reading packet from client:", err)
+				Log("Error reading packet from client: ", err)
 				continue
 			}
 
 			switch data := Packet.Data.(type) {
 			case *common.LoginRequest:
 				{
-					Log("Received LoginRequest from client: ", data.Username)
 					client.Username = data.Username
 					succ, msg := Server.LoginWithCredentials(data.Username, data.Password)
 					client.SendPacket(common.LoginResponse{Success: succ, Message: msg})
 
 					if !succ {
 						client.Conn.Close()
-						Log("Client disconnected due to failed login:", client.Address)
+						Log("Client disconnected due to failed login: ", client.Address)
+					} else {
+						Log("User [", client.Username, "] logged in from ", client.Address)
 					}
 
 				}

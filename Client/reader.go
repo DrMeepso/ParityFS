@@ -31,7 +31,6 @@ func BeginReading() {
 		switch data := Packet.Data.(type) {
 		case *common.JoinAknowledgment:
 			{
-				Log("Received JoinAknowledgment from server")
 				Log("Server Protocol Version:", data.ServerProtocolVersion)
 				if data.ServerProtocolVersion != common.ProtocallVersion {
 					Log("Protocol version mismatch! Client version:", common.ProtocallVersion, "Server version:", data.ServerProtocolVersion)
@@ -52,14 +51,18 @@ func BeginReading() {
 			}
 		case *common.LoginResponse:
 			{
-				Log("Received LoginResponse from server")
 				if data.Success {
-					Log("Login successful!")
+					Log("Login success!")
 					Client.IsLoggedIn = true
 				} else {
-					Log("Login failed:", data.Message)
+					Log("Login failed: ", data.Message)
 					return
 				}
+
+				if Client.IsLoggedIn {
+					Log("Beginning FUSE backend...")
+				}
+
 			}
 
 		default:

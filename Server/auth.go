@@ -36,7 +36,6 @@ func (server *IServer) LoginWithCredentials(username, password string) (bool, st
 		return false, "There was a error logging in"
 	}
 
-	Log("User logged in successfully:", username)
 	return true, "User logged in successfully"
 
 }

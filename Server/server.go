@@ -67,6 +67,8 @@ func ServerMain() {
 
 		case "--dev":
 			fallthrough
+		case "--allow-invalid-cert":
+			fallthrough
 		case "--server":
 			break
 
@@ -117,7 +119,7 @@ func ServerMain() {
 			}
 
 		default:
-			Log("Unknown argument:", args[i])
+			Log("Unknown argument: ", args[i])
 		}
 
 	}

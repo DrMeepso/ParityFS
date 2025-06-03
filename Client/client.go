@@ -4,6 +4,7 @@ import (
 	common "ParityFS/Common"
 	"crypto/tls"
 	"os"
+	"reflect"
 	"strconv"
 )
 
@@ -22,10 +23,11 @@ type ICredential struct {
 }
 
 type IClient struct {
-	ServerInfo IServerInfo
-	Version    int
-	Credential ICredential
-	IsLoggedIn bool
+	ServerInfo       IServerInfo
+	Version          int
+	Credential       ICredential
+	IsLoggedIn       bool
+	allowInvalidCert bool // for testing purposes, should be false in production
 }
 
 var Client IClient = IClient{
@@ -39,6 +41,8 @@ var Client IClient = IClient{
 		Password: "password",
 	},
 	IsLoggedIn: false,
+
+	allowInvalidCert: false, // this is for testing purposes, should be false in production
 }
 
 var ServerConn *tls.Conn
@@ -50,6 +54,9 @@ func ClientMain() {
 	for i := 0; i < len(args); i++ {
 
 		switch args[i] {
+
+		case "--dev":
+			break
 
 		case "-user":
 			fallthrough
@@ -103,8 +110,12 @@ func ClientMain() {
 			}
 			break
 
+		case "--allow-invalid-cert":
+			Client.allowInvalidCert = true
+			Log("Warning: Allowing invalid server certificate for testing purposes. This should not be used in production.")
+
 		default:
-			Log("Unknown argument:", args[i])
+			Log("Unknown argument: ", args[i])
 			break
 
 		}
@@ -118,19 +129,26 @@ func ClientMain() {
 	Log("  Version:", Client.Version)
 
 	tlsConfig := &tls.Config{
-		InsecureSkipVerify: true, // I dont own the server certificate, so I skip verification
+		InsecureSkipVerify: Client.allowInvalidCert, // I dont own the server certificate, so I skip verification
 	}
 
 	conn, err := tls.Dial("tcp", Client.ServerInfo.Host+":"+strconv.Itoa(Client.ServerInfo.Port), tlsConfig)
 	if err != nil {
 		Log("Error connecting to server:", err.Error())
+		if reflect.TypeOf(err).String() == "*tls.CertificateVerificationError" {
+			Log("This is likely due to an invalid or self-signed certificate. Use --allow-invalid-cert to skip verification.")
+			Log("If you have not had this issue before, please check your server's certificate and ensure it is valid.")
+		} else {
+			Log("Please check your server address and port.")
+		}
+		panic("Failed to connect to server: " + err.Error())
 		return
 	}
 
 	ServerConn = conn
 
 	defer conn.Close()
-	Log("Connected to server: ", Client.ServerInfo.Host, " on port ", Client.ServerInfo.Port)
+	Log("Connected to server: ", Client.ServerInfo.Host, ":", Client.ServerInfo.Port)
 
 	// should be a goroutine
 	// but i havent added the FUSEFS yet, so I just use a blocking call
