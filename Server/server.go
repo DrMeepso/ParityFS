@@ -6,6 +6,8 @@ import (
 	"net"
 	"os"
 	"strconv"
+
+	"go.etcd.io/bbolt"
 )
 
 func Log(args ...any) {
@@ -29,6 +31,8 @@ type IServer struct {
 	tlslistener *net.Listener
 
 	connectedClients map[string]*RemoteClient
+
+	boltDB *bbolt.DB
 }
 
 var (
@@ -45,6 +49,8 @@ var (
 		Version:          common.ProtocallVersion,
 		tlslistener:      nil,
 		connectedClients: make(map[string]*RemoteClient),
+
+		boltDB: nil,
 	}
 )
 
@@ -122,6 +128,18 @@ func ServerMain() {
 	Log("  Certificate:", Server.certificate.crt)
 	Log("  Key:", Server.certificate.key)
 	Log("  Server Version:", Server.Version)
+
+	// check if parityfs.db exists, if not create it
+	if _, err := os.Stat("parityfs.db"); os.IsNotExist(err) {
+		Log("Database file does not exist, creating parityfs.db")
+		common.CreateDB()
+	}
+
+	Server.boltDB = common.OpenDB()
+	if Server.boltDB == nil {
+		Log("Error opening database, exiting server.")
+		return
+	}
 
 	// check if certificate files exist
 	if _, err := os.Stat(Server.certificate.crt); os.IsNotExist(err) {

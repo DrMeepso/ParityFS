@@ -76,7 +76,8 @@ func ClientLoop(client *RemoteClient, Server IServer) {
 				{
 					Log("Received LoginRequest from client:", data.Username)
 					client.Username = data.Username
-					client.SendPacket(common.LoginResponse{Success: true, Message: "Login successful"})
+					succ, msg := Server.LoginWithCredentials(data.Username, data.Password)
+					client.SendPacket(common.LoginResponse{Success: succ, Message: msg})
 				}
 			default:
 				Log("Received unknown packet command from client:", Packet.Command)

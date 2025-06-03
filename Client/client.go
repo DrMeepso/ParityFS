@@ -25,6 +25,7 @@ type IClient struct {
 	ServerInfo IServerInfo
 	Version    int
 	Credential ICredential
+	IsLoggedIn bool
 }
 
 var Client IClient = IClient{
@@ -37,6 +38,7 @@ var Client IClient = IClient{
 		Username: "user",
 		Password: "password",
 	},
+	IsLoggedIn: false,
 }
 
 var ServerConn *tls.Conn

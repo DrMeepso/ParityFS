@@ -50,6 +50,17 @@ func BeginReading() {
 				}
 
 			}
+		case *common.LoginResponse:
+			{
+				Log("Received LoginResponse from server")
+				if data.Success {
+					Log("Login successful!")
+					Client.IsLoggedIn = true
+				} else {
+					Log("Login failed:", data.Message)
+					return
+				}
+			}
 
 		default:
 			Log("Received unknown packet command:", Packet.Command)
