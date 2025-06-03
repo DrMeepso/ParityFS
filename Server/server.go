@@ -30,9 +30,9 @@ type IServer struct {
 	Version     int
 	tlslistener *net.Listener
 
-	connectedClients map[string]*RemoteClient
+	connectedClients []*RemoteClient
 
-	boltDB *bbolt.DB
+	BoltDB *bbolt.DB
 }
 
 var (
@@ -48,9 +48,9 @@ var (
 
 		Version:          common.ProtocallVersion,
 		tlslistener:      nil,
-		connectedClients: make(map[string]*RemoteClient),
+		connectedClients: make([]*RemoteClient, 0, 100),
 
-		boltDB: nil,
+		BoltDB: nil,
 	}
 )
 
@@ -135,8 +135,8 @@ func ServerMain() {
 		common.CreateDB()
 	}
 
-	Server.boltDB = common.OpenDB()
-	if Server.boltDB == nil {
+	Server.BoltDB = common.OpenDB()
+	if Server.BoltDB == nil {
 		Log("Error opening database, exiting server.")
 		return
 	}
@@ -182,5 +182,49 @@ func ServerMain() {
 
 		address := conn.RemoteAddr().String()
 		HandleNewClient(conn, address, Server)
+	}
+}
+
+func (server *IServer) Close() {
+	if server.tlslistener != nil {
+		(*server.tlslistener).Close()
+		Log("Server listener closed")
+	}
+
+	if server.BoltDB != nil {
+		server.BoltDB.Close()
+		Log("Database connection closed")
+	}
+
+	for _, client := range server.connectedClients {
+		client.Conn.Close()
+		Log("Closed connection for client:", client.Address)
+	}
+
+	Log("Server shutdown complete")
+}
+
+func (server *IServer) addConnectedClient(client *RemoteClient) {
+	// Add a client to the connected clients map
+	if client != nil && client.Address != "" {
+		server.connectedClients = append(server.connectedClients, client)
+		Log("Client added:", client.Address)
+	} else {
+		Log("Invalid client, cannot add to connected clients")
+	}
+}
+func (server *IServer) removeConnectedClient(client *RemoteClient) {
+	// Remove a client from the connected clients map
+	if client != nil && client.Address != "" {
+		for i, c := range server.connectedClients {
+			if c.Conn == client.Conn {
+				server.connectedClients = append(server.connectedClients[:i], server.connectedClients[i+1:]...)
+				Log("Client removed:", client.Address)
+				return
+			}
+		}
+		Log("Client not found in connected clients:", client.Address)
+	} else {
+		Log("Invalid client, cannot remove from connected clients")
 	}
 }

@@ -10,6 +10,8 @@ type RemoteClient struct {
 	Conn     net.Conn
 	Address  string
 	Username string
+
+	ParentServer *IServer
 }
 
 func (Client *RemoteClient) SendPacket(data any) {
@@ -21,10 +23,13 @@ func (Client *RemoteClient) SendPacket(data any) {
 
 func HandleNewClient(conn net.Conn, address string, Server IServer) *RemoteClient {
 	client := &RemoteClient{
-		Conn:     conn,
-		Address:  address,
-		Username: "",
+		Conn:         conn,
+		Address:      address,
+		Username:     "",
+		ParentServer: &Server,
 	}
+
+	Server.addConnectedClient(client)
 
 	go ClientLoop(client, Server)
 
@@ -48,7 +53,7 @@ func ClientLoop(client *RemoteClient, Server IServer) {
 
 	defer func() {
 		client.Conn.Close()
-		delete(Server.connectedClients, client.Address)
+		Server.removeConnectedClient(client)
 		Log("Client disconnected:", client.Address)
 	}()
 
@@ -74,13 +79,19 @@ func ClientLoop(client *RemoteClient, Server IServer) {
 			switch data := Packet.Data.(type) {
 			case *common.LoginRequest:
 				{
-					Log("Received LoginRequest from client:", data.Username)
+					Log("Received LoginRequest from client: ", data.Username)
 					client.Username = data.Username
 					succ, msg := Server.LoginWithCredentials(data.Username, data.Password)
 					client.SendPacket(common.LoginResponse{Success: succ, Message: msg})
+
+					if !succ {
+						client.Conn.Close()
+						Log("Client disconnected due to failed login:", client.Address)
+					}
+
 				}
 			default:
-				Log("Received unknown packet command from client:", Packet.Command)
+				Log("Received unknown packet command from client: ", Packet.Command)
 				Log("Packet data type:", reflect.TypeOf(Packet.Data))
 			}
 		}
